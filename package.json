@@ -7,16 +7,17 @@
   "scripts": {
     "dev": "vite --host",
     "start": "vite --host",
-    "preview": "vite preview --host",
     "build": "vite build",
+    "preview": "vite preview --host",
+
     "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:full": "npm run build && npm run build:server",
     "start:server": "node dist/index.js",
     "serve": "npm run build:full && npm run start:server",
 
-    "build:pages": "vite build --outDir ../dist --emptyOutDir",
+    "build:pages": "vite build",
     "predeploy": "npm run build:pages",
-    "deploy": "gh-pages -d ../dist",
+    "deploy": "gh-pages -d dist/public",
 
     "check": "tsc --noEmit",
     "format": "prettier --write ."

@@ -150,12 +150,20 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  vitePluginManusRuntime(),
+  vitePluginManusDebugCollector(),
+];
 
 export default defineConfig({
-  // For GitHub Pages (or any sub-path deploy), set VITE_BASE, e.g.
-  // VITE_BASE=/my-repo/
-  base: process.env.VITE_BASE || "/",
+  // ✅ GitHub Pages (repo = InfernalsMC) — обязательно, иначе ассеты/роуты будут ломаться
+  // Если захочешь управлять через env: ставь VITE_BASE=/InfernalsMC/
+  base: "/InfernalsMC/",
+  // base: process.env.VITE_BASE || "/",
+
   plugins,
   resolve: {
     alias: {
