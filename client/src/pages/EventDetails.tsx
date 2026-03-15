@@ -6,10 +6,10 @@ import { PageHeader } from "@/components/site/PageHeader";
 import {
   formatEventDate,
   formatEventTime,
-  getEventBySlug,
   getEventHref,
   type ClubEvent,
 } from "@/data/events";
+import { usePublicEvent, useSiteContent } from "@/hooks/usePublicContent";
 
 function backHref(event: ClubEvent) {
   if (event.category === "training") return "/trainings";
@@ -24,12 +24,29 @@ function backLabel(event: ClubEvent) {
 }
 
 export default function EventDetails({ slug }: { slug: string }) {
-  const event = getEventBySlug(slug);
+  const { event, loading, error } = usePublicEvent(slug);
+  const { get } = useSiteContent();
+
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="Loading…" subtitle="" />
+        <div className="container mx-auto px-4 pb-16">
+          <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300">
+            Loading…
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
       <div>
-        <PageHeader title="Event Not Found" subtitle="This event does not exist." />
+        <PageHeader
+          title="Event Not Found"
+          subtitle={error ? String(error) : "This event does not exist."}
+        />
         <div className="container mx-auto px-4 pb-16">
           <Link
             href="/events"
@@ -117,7 +134,7 @@ export default function EventDetails({ slug }: { slug: string }) {
         {/* Gallery */}
         <div className="mt-10">
           <h2 className="font-heading uppercase text-2xl text-red-500 text-center mb-6">
-            Photos & Videos
+            {get("event_gallery_title", "Photos & Videos")}
           </h2>
           <MediaGallery media={event.media} />
         </div>

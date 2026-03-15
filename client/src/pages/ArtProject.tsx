@@ -3,13 +3,26 @@ import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { MediaGallery } from "@/components/site/MediaGallery";
 import { PageHeader } from "@/components/site/PageHeader";
-import {
-  ART_STUDIO_INSTAGRAM,
-  getArtProjectBySlug,
-} from "@/data/artStudio";
+import { useArtProject, useSiteContent } from "@/hooks/usePublicContent";
 
 export default function ArtProject({ slug }: { slug: string }) {
-  const project = getArtProjectBySlug(slug);
+  const { project, loading, error } = useArtProject(slug);
+  const { get } = useSiteContent();
+
+  const instagramUrl = get("social_instagram_art_studio", "");
+
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="Loading…" subtitle="" />
+        <div className="container mx-auto px-4 pb-16">
+          <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300">
+            Loading project…
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -37,14 +50,16 @@ export default function ArtProject({ slug }: { slug: string }) {
           >
             <ArrowLeft className="size-4" /> Back to Art Studio
           </Link>
-          <a
-            href={ART_STUDIO_INSTAGRAM}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 border border-gray-700 bg-black/30 hover:bg-black/50 px-4 py-2 font-heading uppercase text-gray-200"
-          >
-            Studio Instagram <ExternalLink className="size-4" />
-          </a>
+          {instagramUrl && (
+            <a
+              href={instagramUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 border border-gray-700 bg-black/30 hover:bg-black/50 px-4 py-2 font-heading uppercase text-gray-200"
+            >
+              Studio Instagram <ExternalLink className="size-4" />
+            </a>
+          )}
         </div>
       </PageHeader>
 
@@ -69,12 +84,12 @@ export default function ArtProject({ slug }: { slug: string }) {
           </p>
         </div>
 
-        <div className="mt-10">
-          <MediaGallery media={project.media} />
-        </div>
+        {project.media?.length ? (
+          <div className="mt-10">
+            <MediaGallery media={project.media} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
-
-

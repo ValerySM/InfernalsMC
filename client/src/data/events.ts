@@ -1,4 +1,9 @@
-import { cdnUrls } from "@/site/content";
+const cdnUrls = {
+  artStudioHero: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663078505054/AZsxcuqqalwkzaGz.jpg",
+  gallery1: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663078505054/efWBIqggoJqbobmN.jpg",
+  gallery2: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663078505054/FIytYJKEeYafhQkU.jpg",
+  gallery3: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663078505054/UEUcDWphnAVUUzYM.jpg",
+};
 
 export type EventCategory = "event" | "training" | "organized";
 
@@ -126,9 +131,11 @@ export const EVENTS: ClubEvent[] = [
 ];
 
 function toEventDate(event: ClubEvent): Date {
+  if (!event.date) return new Date(0);
   const time = event.time?.trim() || "00:00";
   // Local time parsing (no timezone suffix).
-  return new Date(`${event.date}T${time}:00`);
+  const d = new Date(`${event.date}T${time}:00`);
+  return isNaN(d.getTime()) ? new Date(0) : d;
 }
 
 export function sortByDateAsc(a: ClubEvent, b: ClubEvent) {
@@ -139,18 +146,18 @@ export function sortByDateDesc(a: ClubEvent, b: ClubEvent) {
   return toEventDate(b).getTime() - toEventDate(a).getTime();
 }
 
-export function getEventHref(event: ClubEvent) {
+export function getEventHref(event: Pick<ClubEvent, "category" | "slug">) {
   if (event.category === "training") return `/trainings/${event.slug}`;
   if (event.category === "organized") return `/organized/${event.slug}`;
   return `/events/${event.slug}`;
 }
 
-export function getEventBySlug(slug: string): ClubEvent | undefined {
-  return EVENTS.find(e => e.slug === slug);
+export function getEventBySlug(slug: string, list: ClubEvent[] = EVENTS): ClubEvent | undefined {
+  return list.find(e => e.slug === slug);
 }
 
-export function getEventsByCategory(category: EventCategory): ClubEvent[] {
-  return EVENTS.filter(e => e.category === category);
+export function getEventsByCategory(category: EventCategory, list: ClubEvent[] = EVENTS): ClubEvent[] {
+  return list.filter(e => e.category === category);
 }
 
 export function isUpcoming(event: ClubEvent, now = new Date()) {
@@ -165,20 +172,25 @@ export function getPastEvents(list: ClubEvent[] = EVENTS, now = new Date()) {
   return [...list].filter(e => !isUpcoming(e, now)).sort(sortByDateDesc);
 }
 
-export function getNearestUpcomingEvent(now = new Date()) {
-  const upcoming = getUpcomingEvents(EVENTS, now);
+export function getNearestUpcomingEvent(now = new Date(), list: ClubEvent[] = EVENTS) {
+  const upcoming = getUpcomingEvents(list, now);
   return upcoming[0];
 }
 
 export function formatEventDate(event: ClubEvent, opts?: Intl.DateTimeFormatOptions) {
   const dt = toEventDate(event);
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    ...opts,
-  }).format(dt);
+  if (!dt.getTime()) return event.date || "TBD";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      ...opts,
+    }).format(dt);
+  } catch {
+    return event.date || "TBD";
+  }
 }
 
 export function formatEventTime(event: ClubEvent) {

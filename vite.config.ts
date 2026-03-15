@@ -77,6 +77,7 @@ function writeToLogFile(source: LogSource, entries: unknown[]) {
 function vitePluginManusDebugCollector(): Plugin {
   return {
     name: "manus-debug-collector",
+    enforce: "pre",
 
     transformIndexHtml(html) {
       if (process.env.NODE_ENV === "production") {
@@ -98,6 +99,32 @@ function vitePluginManusDebugCollector(): Plugin {
     },
 
     configureServer(server: ViteDevServer) {
+      // ---------------------------------------------------------------------
+      // Guard against malformed URLs (e.g. stray '%' from extensions / devtools)
+      // Vite's internal middlewares call decodeURI(req.url) and will throw.
+      // Returning 400 here prevents the scary red overlay.
+      // ---------------------------------------------------------------------
+      const guard = (req: any, res: any, next: any) => {
+        const url = req.url || "";
+        try {
+          decodeURI(url);
+          return next();
+        } catch {
+          res.statusCode = 400;
+          res.end("Bad Request");
+          return;
+        }
+      };
+
+      // IMPORTANT: add the guard to the *beginning* of Connect stack so it runs
+      // before Vite's internal transform middleware.
+      const mw: any = server.middlewares as any;
+      if (Array.isArray(mw.stack)) {
+        mw.stack.unshift({ route: "", handle: guard });
+      } else {
+        server.middlewares.use(guard);
+      }
+
       // POST /__manus__/logs: Browser sends logs (written directly to files)
       server.middlewares.use("/__manus__/logs", (req, res, next) => {
         if (req.method !== "POST") {
@@ -150,20 +177,9 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [
-  react(),
-  tailwindcss(),
-  jsxLocPlugin(),
-  vitePluginManusRuntime(),
-  vitePluginManusDebugCollector(),
-];
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
 export default defineConfig({
-  // ✅ GitHub Pages (repo = InfernalsMC) — обязательно, иначе ассеты/роуты будут ломаться
-  // Если захочешь управлять через env: ставь VITE_BASE=/InfernalsMC/
-  base: "/InfernalsMC/",
-  // base: process.env.VITE_BASE || "/",
-
   plugins,
   resolve: {
     alias: {
@@ -179,9 +195,20 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 3000,
-    strictPort: false, // Will find next available port if 3000 is busy
+    port: 5173,
+    strictPort: false, // Will find next available port if 5173 is busy
     host: true,
+    proxy: {
+      "/api": {
+        // Use 127.0.0.1 to avoid Windows dual-stack localhost quirks
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+      },
+    },
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",

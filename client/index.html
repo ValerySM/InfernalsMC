@@ -7,19 +7,6 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Infernals MC Israel — Байкерский клуб</title>
-
-    <!-- GitHub Pages SPA routing fix (pairs with /public/404.html) -->
-    <script>
-      (function () {
-        // If the 404.html redirect used the "?/" trick, restore the real path
-        // so client-side routing works on refresh / direct links.
-        var l = window.location;
-        if (l.search && l.search.startsWith("?/") ) {
-          var newPath = l.search.slice(1) + l.hash;
-          window.history.replaceState(null, "", newPath);
-        }
-      })();
-    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto+Condensed:wght@300;400;500;700&display=swap" rel="stylesheet" />
@@ -28,10 +15,19 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <!-- Optional analytics (Umami). To enable, set VITE_ANALYTICS_ENDPOINT and VITE_ANALYTICS_WEBSITE_ID in .env -->
+    <script type="module">
+      const endpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+      const websiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+      if (endpoint && websiteId) {
+        const clean = String(endpoint).replace(/\/$/, "");
+        const s = document.createElement("script");
+        s.defer = true;
+        s.src = `${clean}/umami`;
+        s.setAttribute("data-website-id", String(websiteId));
+        document.head.appendChild(s);
+      }
+    </script>
   </body>
 
 </html>

@@ -1,34 +1,36 @@
+import * as React from "react";
 import type { ComponentType } from "react";
 import { Link } from "wouter";
 import { User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Section, SectionSubtitle, SectionTitle } from "@/components/site/Section";
-import { cdnUrls, contacts } from "@/site/content";
 import {
-  getNearestUpcomingEvent,
   getUpcomingEvents,
   getEventHref,
   formatEventDate,
   formatEventTime,
+  getNearestUpcomingEvent,
   getEventsByCategory,
 } from "@/data/events";
-
-const members = [
-  { role: "PRESIDENT", name: "STAS" },
-  { role: "V.PRESIDENT", name: "PASHA" },
-  { role: "SECRETARY", name: "SAGIF" },
-  { role: "TREASURE", name: "YURI" },
-  { role: "SGT AT ARMS", name: "VALERY" },
-  { role: "ROAD CAPTAIN", name: "GIL" },
-] as const;
+import { usePublicEvents, usePublicGallery, useSiteContent, useMembers } from "@/hooks/usePublicContent";
+import type { ClubEvent } from "@/data/events";
 
 function PlaceholderImage({
   text,
   Icon,
+  photoUrl,
 }: {
   text: string;
   Icon: ComponentType<{ className?: string }>;
+  photoUrl?: string;
 }) {
+  if (photoUrl) {
+    return (
+      <div className="aspect-square w-full h-full overflow-hidden border-2 border-gray-600">
+        <img src={photoUrl} alt={text} className="w-full h-full object-cover" loading="lazy" />
+      </div>
+    );
+  }
   return (
     <div className="bg-gray-800/50 border-2 border-gray-600 flex flex-col items-center justify-center aspect-square w-full h-full text-gray-400">
       <Icon className="text-5xl mb-2" />
@@ -37,24 +39,30 @@ function PlaceholderImage({
   );
 }
 
-function NextEventBanner() {
-  const next = getNearestUpcomingEvent(new Date());
+function NextEventBanner({
+  events,
+  get,
+}: {
+  events: ClubEvent[];
+  get: (key: string, fallback: string) => string;
+}) {
+  const next = getNearestUpcomingEvent(new Date(), events);
 
   if (!next) {
     return (
       <div className="mt-10 border-2 border-gray-700 bg-black/30 p-6 text-center max-w-4xl mx-auto">
         <p className="font-heading uppercase text-gray-200">
-          No upcoming events scheduled yet
+          {get("home_no_upcoming_title", "No upcoming events scheduled yet")}
         </p>
         <p className="mt-2 text-gray-400">
-          Check the calendar — we update it continuously.
+          {get("home_no_upcoming_text", "Check the calendar — we update it continuously.")}
         </p>
         <div className="mt-6">
           <Link
             href="/events"
             className="inline-flex items-center justify-center border border-gray-700 bg-black/30 hover:bg-black/50 px-5 py-3 font-heading uppercase text-gray-200"
           >
-            Open Events Calendar
+            {get("home_open_events_btn", "Open Events Calendar")}
           </Link>
         </div>
       </div>
@@ -64,7 +72,7 @@ function NextEventBanner() {
   return (
     <div className="mt-10 border-2 border-red-500/30 bg-black/40 p-6 max-w-4xl mx-auto">
       <p className="font-heading uppercase text-red-500 text-center">
-        Next Event
+        {get("home_next_event_label", "Next Event")}
       </p>
       <h3 className="mt-3 font-heading uppercase text-2xl text-white text-center">
         {next.title}
@@ -105,58 +113,90 @@ function NextEventBanner() {
 }
 
 export default function Home() {
-  const upcomingClubEvents = getUpcomingEvents(getEventsByCategory("event")).slice(
-    0,
-    3
-  );
-  const upcomingTrainings = getUpcomingEvents(
-    getEventsByCategory("training")
-  ).slice(0, 3);
+  const { events: allEvents, loading: eventsLoading, error: eventsError } = usePublicEvents();
+  const { items: galleryItems, loading: galleryLoading } = usePublicGallery();
+  const { get, loading: contentLoading } = useSiteContent();
+  const { members, loading: membersLoading } = useMembers();
+
+  const upcomingClubEvents = React.useMemo(() => {
+    const list = getEventsByCategory("event", allEvents);
+    return getUpcomingEvents(list).slice(0, 3);
+  }, [allEvents]);
+
+  const upcomingTrainings = React.useMemo(() => {
+    const list = getEventsByCategory("training", allEvents);
+    return getUpcomingEvents(list).slice(0, 3);
+  }, [allEvents]);
+
+  const galleryTop3 = React.useMemo(() => galleryItems.slice(0, 3), [galleryItems]);
+
+  const exploreCards = [
+    {
+      title: get("home_explore_1_title", "Events"),
+      desc: get("home_explore_1_desc", "Calendar + media pages"),
+      href: get("home_explore_1_href", "/events"),
+    },
+    {
+      title: get("home_explore_2_title", "Trainings"),
+      desc: get("home_explore_2_desc", "Only training events"),
+      href: get("home_explore_2_href", "/trainings"),
+    },
+    {
+      title: get("home_explore_3_title", "Art Studio"),
+      desc: get("home_explore_3_desc", "Clickable projects"),
+      href: get("home_explore_3_href", "/art-studio"),
+    },
+    {
+      title: get("home_explore_4_title", "Support"),
+      desc: get("home_explore_4_desc", "Donate & help the club"),
+      href: get("home_explore_4_href", "/support"),
+    },
+  ];
 
   return (
     <div>
       {/* Hero */}
       <section className="min-h-[calc(100vh-5rem)] flex items-center justify-center bg-black">
         <img
-          src={cdnUrls.heroMain}
-          alt="Infernals MC Israel Logo"
+          src={get("hero_image_url", "https://files.manuscdn.com/user_upload_by_module/session_file/310519663078505054/RVKRdjdkguMSvyhL.png")}
+          alt={get("hero_image_alt", "Infernals MC Israel Logo")}
           className="max-w-full max-h-[80vh] object-contain"
         />
       </section>
 
       {/* About */}
       <Section id="about">
-        <SectionTitle>About Us</SectionTitle>
+        <SectionTitle>{get("about_title", "About Us")}</SectionTitle>
         <p
           className="text-center text-lg md:text-xl text-gray-300 max-w-4xl mx-auto leading-relaxed"
-          dir="rtl"
+          dir={get("about_text_dir", "rtl") as "rtl" | "ltr"}
         >
-          מועדון אופנוענים INFERNALS MC ISRAEL. מועדון חברים שאוהבים אופנועים,
-          חופש וחיים שמחים! אנחנו אוהבים לרכב על אופנועים, לתקן ולשפר אותם,
-          ללמד רוכבים חדשים על איך לטפל נכון באופנוע, איך לרכב בצורה בטיחותית
-          ולגלות מקומות מטריפים בארץ ובחו"ל! וכמובן אוהבים לעשות מסיבות
-          ולהזמין המון חברים!
+          {get("about_text", "")}
         </p>
 
         {/* Requirement: nearest event directly after the club description */}
-        <NextEventBanner />
+        {eventsLoading ? (
+          <div className="mt-10 border-2 border-gray-700 bg-black/30 p-6 text-center max-w-4xl mx-auto">
+            <p className="font-heading uppercase text-gray-200">Loading events…</p>
+          </div>
+        ) : eventsError ? (
+          <div className="mt-10 border border-red-500/40 bg-red-500/10 text-red-200 p-6 text-center max-w-4xl mx-auto">
+            {String(eventsError)}
+          </div>
+        ) : (
+          <NextEventBanner events={allEvents} get={get} />
+        )}
       </Section>
 
       {/* Quick Links */}
       <Section>
-        <SectionTitle>Explore</SectionTitle>
+        <SectionTitle>{get("explore_title", "Explore")}</SectionTitle>
         <SectionSubtitle>
-          Everything is structured into pages — events, trainings, art projects,
-          and support.
+          {get("explore_subtitle", "Everything is structured into pages — events, trainings, art projects, and support.")}
         </SectionSubtitle>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { title: "Events", desc: "Calendar + media pages", href: "/events" },
-            { title: "Trainings", desc: "Only training events", href: "/trainings" },
-            { title: "Art Studio", desc: "Clickable projects", href: "/art-studio" },
-            { title: "Support", desc: "Donate & help the club", href: "/support" },
-          ].map(x => (
+          {exploreCards.map(x => (
             <Link
               key={x.title}
               href={x.href}
@@ -176,29 +216,39 @@ export default function Home() {
 
       {/* Officers */}
       <Section id="members">
-        <SectionTitle>Club Officers</SectionTitle>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
-          {members.map(m => (
-            <div key={m.name} className="text-center">
-              <PlaceholderImage text={m.name} Icon={User} />
-              <h3 className="mt-4 font-heading text-xl font-bold text-red-500 uppercase">
-                {m.role}
-              </h3>
-              <p className="text-gray-300 text-lg">{m.name}</p>
-            </div>
-          ))}
-        </div>
+        <SectionTitle>{get("officers_title", "Club Officers")}</SectionTitle>
+        {membersLoading ? (
+          <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300 max-w-3xl mx-auto">
+            Loading…
+          </div>
+        ) : members.length ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
+            {members.map(m => (
+              <div key={m.id} className="text-center">
+                <PlaceholderImage text={m.name} Icon={User} photoUrl={m.photoUrl} />
+                <h3 className="mt-4 font-heading text-xl font-bold text-red-500 uppercase">
+                  {m.role}
+                </h3>
+                <p className="text-gray-300 text-lg">{m.name}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300 max-w-3xl mx-auto">
+            No club officers listed yet.
+          </div>
+        )}
       </Section>
 
       {/* Upcoming previews */}
       <Section>
-        <SectionTitle>Upcoming</SectionTitle>
-        <SectionSubtitle>Next club events and trainings.</SectionSubtitle>
+        <SectionTitle>{get("upcoming_title", "Upcoming")}</SectionTitle>
+        <SectionSubtitle>{get("upcoming_subtitle", "Next club events and trainings.")}</SectionSubtitle>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           <div>
             <h3 className="font-heading uppercase text-2xl text-red-500 text-center">
-              Events
+              {get("home_upcoming_events_label", "Events")}
             </h3>
             <div className="mt-6 grid grid-cols-1 gap-6">
               {upcomingClubEvents.length ? (
@@ -229,7 +279,7 @@ export default function Home() {
                 ))
               ) : (
                 <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300">
-                  No upcoming club events.
+                  {get("home_no_upcoming_events", "No upcoming club events.")}
                 </div>
               )}
             </div>
@@ -238,14 +288,14 @@ export default function Home() {
                 href="/events"
                 className="inline-flex items-center justify-center border border-gray-700 bg-black/30 hover:bg-black/50 px-4 py-2 font-heading uppercase text-gray-200"
               >
-                Open Events Calendar
+                {get("home_open_events_btn", "Open Events Calendar")}
               </Link>
             </div>
           </div>
 
           <div>
             <h3 className="font-heading uppercase text-2xl text-red-500 text-center">
-              Trainings
+              {get("home_upcoming_trainings_label", "Trainings")}
             </h3>
             <div className="mt-6 grid grid-cols-1 gap-6">
               {upcomingTrainings.length ? (
@@ -276,7 +326,7 @@ export default function Home() {
                 ))
               ) : (
                 <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300">
-                  No upcoming trainings.
+                  {get("home_no_upcoming_trainings", "No upcoming trainings.")}
                 </div>
               )}
             </div>
@@ -285,7 +335,7 @@ export default function Home() {
                 href="/trainings"
                 className="inline-flex items-center justify-center border border-gray-700 bg-black/30 hover:bg-black/50 px-4 py-2 font-heading uppercase text-gray-200"
               >
-                Open Trainings Calendar
+                {get("home_open_trainings_btn", "Open Trainings Calendar")}
               </Link>
             </div>
           </div>
@@ -294,38 +344,63 @@ export default function Home() {
 
       {/* Gallery */}
       <Section id="gallery">
-        <SectionTitle>Gallery</SectionTitle>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <img
-            src={cdnUrls.gallery1}
-            alt="Gallery 1"
-            className="w-full h-80 object-cover border-4 border-gray-700"
-          />
-          <img
-            src={cdnUrls.gallery2}
-            alt="Gallery 2"
-            className="w-full h-80 object-cover border-4 border-gray-700"
-          />
-          <img
-            src={cdnUrls.gallery3}
-            alt="Gallery 3"
-            className="w-full h-80 object-cover border-4 border-gray-700"
-          />
-        </div>
+        <SectionTitle>{get("gallery_title", "Gallery")}</SectionTitle>
+        {galleryLoading ? (
+          <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300 max-w-3xl mx-auto">
+            Loading…
+          </div>
+        ) : galleryTop3.length ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {galleryTop3.map((it, idx) => (
+              <a
+                key={it.id || idx}
+                href={it.url}
+                target="_blank"
+                rel="noreferrer"
+                className="block border-4 border-gray-700 bg-black/30"
+              >
+                {it.type === "image" ? (
+                  <img
+                    src={it.url}
+                    alt={(it as any).alt || `Gallery ${idx + 1}`}
+                    className="w-full h-80 object-cover"
+                    loading="lazy"
+                  />
+                ) : it.type === "video" ? (
+                  <video controls className="w-full h-80 object-cover" src={it.url} />
+                ) : (
+                  <div className="aspect-video w-full h-80">
+                    <iframe
+                      className="w-full h-full"
+                      src={it.url}
+                      title={(it as any).title || "Embedded"}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="border-2 border-gray-700 bg-black/30 p-6 text-center text-gray-300 max-w-3xl mx-auto">
+            No gallery items yet.
+          </div>
+        )}
       </Section>
 
       {/* Contact */}
       <Section id="contact">
-        <SectionTitle>Contact Us</SectionTitle>
+        <SectionTitle>{get("contact_title", "Contact Us")}</SectionTitle>
         <div className="max-w-2xl mx-auto text-center text-lg">
           <p className="text-gray-300">
-            Phone: <a className="hover:text-white" href={`tel:${contacts.phone}`}>{contacts.phone}</a>
+            Phone: <a className="hover:text-white" href={`tel:${get("contact_phone", "")}`}>{get("contact_phone", "")}</a>
           </p>
           <p className="mt-2 text-gray-300">
-            Email: <a className="hover:text-white" href={`mailto:${contacts.email}`}>{contacts.email}</a>
+            Email: <a className="hover:text-white" href={`mailto:${get("contact_email", "")}`}>{get("contact_email", "")}</a>
           </p>
           <p className="mt-4 text-gray-300" dir="rtl">
-            {contacts.addressHe}
+            {get("contact_address_he", "")}
           </p>
         </div>
       </Section>
